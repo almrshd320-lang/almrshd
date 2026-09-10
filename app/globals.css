@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   Al-Murshid — global styles
+   Arabic-first, RTL, dark cinematic surface for the storefront.
+   ========================================================================== */
+
+@layer base {
+  :root {
+    --shell-gutter: 1.25rem;
+    /* Set by the colour selector so the whole hero re-lights on selection. */
+    --accent: #6b1f2e;
+    --accent-glow-from: #2a0a11;
+    --accent-glow-to: #8e2a3c;
+    color-scheme: dark;
+  }
+
+  @media (min-width: 768px) {
+    :root { --shell-gutter: 2rem; }
+  }
+
+  * { border-color: theme('colors.ink.700'); }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: theme('colors.ink.900');
+    color: theme('colors.ink.100');
+    font-feature-settings: 'kern', 'liga';
+    text-rendering: optimizeLegibility;
+    /* No horizontal scroll at any width — an RTL failure mode that is easy to
+       introduce with translated decorative elements. */
+    overflow-x: hidden;
+  }
+
+  /* Arabic numerals inside otherwise-RTL text stay left-to-right. `bdi` and
+     this class keep phone numbers and reservation codes from being reordered. */
+  .ltr-nums {
+    direction: ltr;
+    unicode-bidi: isolate;
+    display: inline-block;
+  }
+
+  /* Visible, high-contrast focus everywhere. Never removed. */
+  :focus-visible {
+    outline: 2px solid theme('colors.burgundy.400');
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: theme('colors.burgundy.600');
+    color: white;
+  }
+
+  /* Respect the OS setting. Everything still renders; it just stops moving. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .shell {
+    width: 100%;
+    max-width: theme('maxWidth.shell');
+    margin-inline: auto;
+    padding-inline: var(--shell-gutter);
+  }
+
+  /* A single hairline treatment used for cards and panels throughout. */
+  .surface {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.045) 0%,
+      rgba(255, 255, 255, 0.015) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+  }
+
+  .surface-solid {
+    background-color: theme('colors.ink.800');
+    border: 1px solid theme('colors.ink.700');
+    border-radius: 1rem;
+  }
+
+  /* Product lighting. Used behind the hero and the colour selector, and
+     re-tinted by --accent-glow-* when a colour is chosen. */
+  .product-glow {
+    background: radial-gradient(
+      ellipse 60% 50% at 50% 45%,
+      var(--accent-glow-to) 0%,
+      var(--accent-glow-from) 45%,
+      transparent 75%
+    );
+    filter: blur(60px);
+    opacity: 0.55;
+    transition: background 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .hairline {
+    height: 1px;
+    background: linear-gradient(
+      to left,
+      transparent,
+      rgba(255, 255, 255, 0.14) 20%,
+      rgba(255, 255, 255, 0.14) 80%,
+      transparent
+    );
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: theme('colors.ink.700');
+    border-radius: 0.5rem;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.06),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* Screen-reader-only, with a visible-on-focus variant for the skip link. */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+@layer utilities {
+  /* Logical properties so a future LTR locale needs no rewrites. */
+  .ps-safe { padding-inline-start: var(--shell-gutter); }
+  .pe-safe { padding-inline-end: var(--shell-gutter); }
+
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+
+  /* Horizontal scrollers (tables, spec rows) hide their scrollbar but keep
+     keyboard and touch scrolling intact. */
+  .scroll-x {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scroll-x::-webkit-scrollbar { height: 6px; }
+  .scroll-x::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+  }
+}
+
+/* The admin area is a light, dense, functional surface — deliberately not
+   cinematic. It opts out of the storefront's dark treatment entirely. */
+.admin-root {
+  color-scheme: light;
+  background-color: #f6f7f9;
+  color: theme('colors.ink.800');
+}
