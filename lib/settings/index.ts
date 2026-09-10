@@ -78,9 +78,10 @@ export const getPublicSettings = cache(async (): Promise<PublicSettings> => {
     for (const row of data as { key: string; value: unknown }[]) {
       const field = KEY_MAP[row.key];
       if (!field) continue;
-      // jsonb comes back already parsed; assign through a widened type because
-      // the mapping is heterogeneous by construction.
-      (result as Record<string, unknown>)[field] = row.value;
+      // jsonb comes back already parsed. The key→field mapping is heterogeneous
+      // by construction (booleans, numbers, strings, arrays), so the assignment
+      // goes through `unknown` rather than pretending one type covers them all.
+      (result as unknown as Record<string, unknown>)[field] = row.value;
     }
     return result;
   } catch (err) {

@@ -15,7 +15,12 @@ import {
   parseQrPayload,
 } from '@/lib/validation/schemas';
 import { toArabicError } from '@/config/statuses';
-import type { ActionResult, QrScanResult } from '@/types/domain';
+import type {
+  ActionResult,
+  QrScanResult,
+  PriceHistoryRow,
+  StockLedgerEntry,
+} from '@/types/domain';
 
 /**
  * Admin Server Actions.
@@ -260,4 +265,50 @@ export async function anonymizeReservationAction(
 
   revalidatePath('/admin/reservations');
   return { ok: true, data: null };
+}
+
+// ─── Read actions used by client components ──────────────────────────────────
+
+/**
+ * Price history for one variant, callable from the client.
+ *
+ * Exposed as an action rather than fetched in the page so the modal loads on
+ * demand instead of shipping every variant's history with the table. The
+ * permission is checked here and again inside admin_price_history().
+ */
+export async function getPriceHistoryAction(variantId: string): Promise<PriceHistoryRow[]> {
+  const guard = await assertPermission('view_prices');
+  if (!guard.ok) return [];
+
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.rpc('admin_price_history', {
+    p_variant_id: variantId,
+    p_limit: 50,
+  });
+
+  if (error) {
+    console.error('[admin] price history failed', error.message);
+    return [];
+  }
+  return (data ?? []) as PriceHistoryRow[];
+}
+
+/** Stock ledger for one variant, callable from the client. */
+export async function getStockHistoryAction(variantId: string): Promise<StockLedgerEntry[]> {
+  const guard = await assertPermission('manage_stock');
+  if (!guard.ok) return [];
+
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('v_admin_stock_history')
+    .select('id, previous_quantity, new_quantity, delta, reason, changed_by_email, note, created_at, reservation_code')
+    .eq('variant_id', variantId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('[admin] stock history failed', error.message);
+    return [];
+  }
+  return (data ?? []) as StockLedgerEntry[];
 }

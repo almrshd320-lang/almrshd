@@ -264,7 +264,9 @@ const detailsSchema = z.object({
 
 type DetailsForm = z.infer<typeof detailsSchema>;
 
-export function StepDetails() {
+// Takes StepProps for a uniform call signature with the other steps, though it
+// needs none of the catalog data — only the store.
+export function StepDetails(_props: StepProps) {
   const { fullName, phone, city, setDetails, next, back } = useBookingStore();
 
   const {

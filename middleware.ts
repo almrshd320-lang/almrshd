@@ -75,6 +75,6 @@ export const config = {
      * extension. Keeping the 3D model and images out of middleware matters for
      * first-load performance.
      */
-    '/((?!_next/static|_next/image|favicon.ico|models/|images/|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|glb|gltf|txt|xml|ico)$).*)',
+    '/((?!api/|_next/static|_next/image|favicon.ico|models/|images/|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|glb|gltf|txt|xml|ico)$).*)',
   ],
 };

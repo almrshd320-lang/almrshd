@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#16171A"/><stop offset="100%" stop-color="#2A0A11"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C9CCD1" stop-opacity="0.95"/><stop offset="100%" stop-color="#C9CCD1" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="needle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B85C74"/><stop offset="100%" stop-color="#6B1F2E"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="url(#ring)" stroke-width="12"/>
+  <path d="M256 90 L292 256 L256 422 L220 256 Z" fill="url(#needle)"/>
+  <path d="M90 256 L256 220 L422 256 L256 292 Z" fill="#C9CCD1" fill-opacity="0.3"/>
+  <circle cx="256" cy="256" r="24" fill="#fff"/>
+</svg>

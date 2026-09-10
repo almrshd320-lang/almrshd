@@ -264,3 +264,15 @@ export interface PriceHistoryRow {
 export type ActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; code?: string };
+
+export interface StockLedgerEntry {
+  id: string;
+  previous_quantity: number;
+  new_quantity: number;
+  delta: number;
+  reason: string;
+  changed_by_email: string | null;
+  note: string | null;
+  created_at: string;
+  reservation_code: string | null;
+}
