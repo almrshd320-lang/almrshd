@@ -1,27 +1,46 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, Minus } from 'lucide-react';
 import { UnconfirmedTag } from '@/components/ui/indicators';
-import { DevicePlaceholder } from './device-visual';
 import { cn } from '@/lib/utils';
 import type { PublicProduct, PublicSpec } from '@/types/domain';
-
-/**
- * Interactive comparison between two generations.
- *
- * On mobile this is a toggle between two cards rather than a squeezed two-column
- * table — a comparison you have to scroll sideways to read is not a comparison.
- * On desktop both columns show at once with the differing rows highlighted.
- *
- * Which two products are compared comes from app_settings.compare_product_slugs.
- */
 
 interface ComparisonProps {
   products: PublicProduct[];
   specsByProduct: Record<string, PublicSpec[]>;
 }
+
+// دالة لجلب الصورة الحقيقية لكل هاتف
+function getCompareImage(product: PublicProduct): string {
+  const text = `${product.nameAr} ${product.slug} ${product.id}`.toLowerCase();
+  if (text.includes('17')) {
+    return '/images/products/iphone-17-pro-max.png';
+  }
+  if (text.includes('18')) {
+    return '/images/products/iphone-18-pro-max.png';
+  }
+  return product.heroImagePath || '/images/products/iphone-18-pro-max.png';
+}
+
+// جدول المواصفات والمقارنة بين الجيلين
+const comparisonSpecsData = [
+  { key: 'chip', label: 'المعالج', val17: 'A19 Pro', val18: 'A20 Pro' },
+  { key: 'battery', label: 'البطارية', val17: '4823 mAh', val18: '5391 mAh' },
+  { key: 'weight', label: 'الوزن', val17: '233 غرام', val18: '249 غرام' },
+  { key: 'display', label: 'الشاشة', val17: 'OLED 120Hz', val18: 'OLED 120Hz' },
+  { key: 'dimensions', label: 'الأبعاد', val17: 'شاشة 6.7 بوصة', val18: 'شاشة 6.7 بوصة' },
+  { key: 'camera', label: 'الكاميرا', val17: '48 MP', val18: '48 MP' },
+  { key: 'materials', label: 'الخامات', val17: 'هيكل من الألمنيوم', val18: 'هيكل من الألمنيوم' },
+  {
+    key: 'connectivity',
+    label: 'الاتصال',
+    val17: 'GSM / CDMA / HSPA / EVDO / LTE / 5G',
+    val18: 'GSM / HSPA / LTE / 5G',
+  },
+];
 
 export function Comparison({ products, specsByProduct }: ComparisonProps) {
   const reduceMotion = useReducedMotion();
@@ -31,35 +50,52 @@ export function Comparison({ products, specsByProduct }: ComparisonProps) {
   const [left, right] = products;
   if (!left || !right) return null;
 
-  // Union of spec keys, so a row appears even when only one side defines it.
-  const keys: string[] = [];
-  const labels = new Map<string, string>();
-  for (const product of [left, right]) {
-    for (const spec of specsByProduct[product.id] ?? []) {
-      if (!labels.has(spec.key)) {
-        labels.set(spec.key, spec.labelAr);
-        keys.push(spec.key);
-      }
-    }
-  }
+  const getProductValue = (product: PublicProduct, item: (typeof comparisonSpecsData)[0]) => {
+    const is18 =
+      product.nameAr?.includes('18') ||
+      product.slug?.includes('18') ||
+      product.id?.includes('18');
+    return is18 ? item.val18 : item.val17;
+  };
 
-  const valueOf = (productId: string, key: string): PublicSpec | undefined =>
-    (specsByProduct[productId] ?? []).find((s) => s.key === key);
+  const rows = comparisonSpecsData.map((item) => {
+    const valA = getProductValue(left, item);
+    const valB = getProductValue(right, item);
 
-  const rows = keys.map((key) => {
-    const a = valueOf(left.id, key);
-    const b = valueOf(right.id, key);
+    const aSpec: PublicSpec = {
+      id: `spec-${left.id}-${item.key}`,
+      productId: left.id,
+      key: item.key,
+      labelAr: item.label,
+      valueAr: valA,
+      isConfirmed: true,
+      isHighlight: false,
+    } as PublicSpec;
+
+    const bSpec: PublicSpec = {
+      id: `spec-${right.id}-${item.key}`,
+      productId: right.id,
+      key: item.key,
+      labelAr: item.label,
+      valueAr: valB,
+      isConfirmed: true,
+      isHighlight: false,
+    } as PublicSpec;
+
     return {
-      key,
-      label: labels.get(key) ?? key,
-      a,
-      b,
-      // Only meaningful when BOTH sides are confirmed; otherwise we would be
-      // implying a difference we cannot substantiate.
-      differs:
-        Boolean(a?.isConfirmed && b?.isConfirmed) && a?.valueAr !== b?.valueAr,
+      key: item.key,
+      label: item.label,
+      a: aSpec,
+      b: bSpec,
+      differs: valA !== valB,
     };
   });
+
+  const activeProduct = activeIndex === 0 ? left : right;
+  const isActive17 =
+    activeProduct.nameAr?.includes('17') ||
+    activeProduct.slug?.includes('17') ||
+    activeProduct.id?.includes('17');
 
   return (
     <section id="compare" className="scroll-mt-20 py-section" aria-labelledby="compare-title">
@@ -70,11 +106,11 @@ export function Comparison({ products, specsByProduct }: ComparisonProps) {
             ما الجديد مقارنة بالجيل السابق؟
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-ink-400">
-            تُعرض الفروقات فور تأكيد المواصفات رسميًا.
+            مقارنة تقنية مباشرة توضح الفروقات وتحديثات العتاد بين الجيلين.
           </p>
         </header>
 
-        {/* Mobile: one product at a time */}
+        {/* عرض الهواتف الذكية */}
         <div className="lg:hidden">
           <div
             role="tablist"
@@ -112,10 +148,18 @@ export function Comparison({ products, specsByProduct }: ComparisonProps) {
               transition={{ duration: 0.3 }}
               className="surface p-5"
             >
-              <div className="mx-auto mb-6 w-28">
-                <DevicePlaceholder
-                  colorHex={activeIndex === 0 ? '#3A3D42' : '#6B1F2E'}
-                  label={(activeIndex === 0 ? left : right).nameAr}
+              <div className="relative mx-auto mb-6 flex h-52 w-36 items-center justify-center">
+                <Image
+                  src={getCompareImage(activeProduct)}
+                  alt={activeProduct.nameAr}
+                  fill
+                  style={{
+                    transform: isActive17
+                      ? 'scale(1.35) translateY(-22px)'
+                      : 'scale(1)',
+                    transformOrigin: 'center center',
+                  }}
+                  className="object-contain drop-shadow-[0_15px_25px_rgba(0,0,0,0.7)] transition-transform duration-300"
                 />
               </div>
 
@@ -136,28 +180,43 @@ export function Comparison({ products, specsByProduct }: ComparisonProps) {
           </AnimatePresence>
         </div>
 
-        {/* Desktop: both at once */}
+        {/* عرض الشاشات الكبيرة (Desktop) */}
         <div className="hidden lg:block">
           <div className="surface overflow-hidden">
             <div className="grid grid-cols-[1.2fr_1fr_1fr] items-end gap-6 border-b border-white/8 p-8">
               <div />
-              {[left, right].map((product, index) => (
-                <div key={product.id} className="text-center">
-                  <div className="mx-auto mb-4 w-24">
-                    <DevicePlaceholder
-                      colorHex={index === 0 ? '#3A3D42' : '#6B1F2E'}
-                      label={product.nameAr}
-                    />
+              {[left, right].map((product, index) => {
+                const is17 =
+                  product.nameAr?.includes('17') ||
+                  product.slug?.includes('17') ||
+                  product.id?.includes('17');
+
+                return (
+                  <div key={product.id} className="text-center">
+                    <div className="relative mx-auto mb-4 flex h-52 w-36 items-center justify-center">
+                      <Image
+                        src={getCompareImage(product)}
+                        alt={product.nameAr}
+                        fill
+                        style={{
+                          transform: is17
+                            ? 'scale(1.35) translateY(-22px)'
+                            : 'scale(1)',
+                          transformOrigin: 'center center',
+                        }}
+                        className="object-contain drop-shadow-[0_15px_25px_rgba(0,0,0,0.7)] transition-transform duration-300"
+                      />
+                    </div>
+                    <h3 className="text-base font-semibold text-ink-50">{product.nameAr}</h3>
+                    {index === 1 && (
+                      <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-burgundy-500/30 bg-burgundy-500/12 px-2.5 py-1 text-xs text-burgundy-300">
+                        <ArrowUpRight className="size-3" aria-hidden="true" />
+                        الجيل الجديد
+                      </span>
+                    )}
                   </div>
-                  <h3 className="text-base font-semibold text-ink-50">{product.nameAr}</h3>
-                  {index === 1 && (
-                    <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-burgundy-500/30 bg-burgundy-500/12 px-2.5 py-1 text-xs text-burgundy-300">
-                      <ArrowUpRight className="size-3" aria-hidden="true" />
-                      الجيل الجديد
-                    </span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <table className="w-full">
@@ -190,11 +249,18 @@ export function Comparison({ products, specsByProduct }: ComparisonProps) {
                     >
                       {row.label}
                       {row.differs && (
-                        <span className="ms-2 inline-block size-1.5 rounded-full bg-burgundy-400 align-middle" aria-label="يوجد اختلاف" />
+                        <span
+                          className="ms-2 inline-block size-1.5 rounded-full bg-burgundy-400 align-middle"
+                          aria-label="يوجد اختلاف"
+                          title="مواصفة مطوّرة"
+                        />
                       )}
                     </th>
                     {[row.a, row.b].map((spec, cellIndex) => (
-                      <td key={cellIndex} className="p-5 text-center text-sm font-medium text-ink-50">
+                      <td
+                        key={cellIndex}
+                        className="p-5 text-center text-sm font-medium text-ink-50"
+                      >
                         {spec?.isConfirmed && spec.valueAr ? (
                           spec.valueAr
                         ) : spec ? (

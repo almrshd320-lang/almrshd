@@ -1,129 +1,191 @@
 'use client';
 
-import { Suspense, useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import {
-  OrbitControls,
-  Environment,
-  ContactShadows,
-  useGLTF,
-  Center,
-  PerspectiveCamera,
-} from '@react-three/drei';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-
-/**
- * The 3D scene. Loaded only by ViewerSection, and only via next/dynamic with
- * ssr:false — three.js must never enter the server bundle or the initial
- * JavaScript payload.
- */
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 interface SceneProps {
-  modelPath: string;
-  colorHex: string;
-  reducedMotion: boolean;
+  modelPath?: string;
+  colorHex?: string;
+  reducedMotion?: boolean;
 }
 
-function Model({ modelPath, colorHex, reducedMotion }: SceneProps) {
-  const group = useRef<THREE.Group>(null);
-  const { scene } = useGLTF(modelPath);
+export default function ProductScene({
+  modelPath = '/models/phone.glb',
+  colorHex = '#8E2434',
+  reducedMotion = false,
+}: SceneProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const modelRef = useRef<THREE.Group | null>(null);
 
-  // Clone so several viewers on one page do not fight over one instance, and
-  // tint the body material to the selected colour.
-  const cloned = useMemo(() => {
-    const copy = scene.clone(true);
-    const target = new THREE.Color(colorHex);
+  // تحديث اللون عند تغيير العميل للون
+  useEffect(() => {
+    if (!modelRef.current || !colorHex) return;
+    const targetColor = new THREE.Color(colorHex);
 
-    copy.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.material) {
-        const materials = Array.isArray(child.material) ? child.material : [child.material];
-        child.material = materials.map((m) => {
-          const cloneMaterial = m.clone() as THREE.MeshStandardMaterial;
-          // Only re-tint the body; leave glass, screen and lens alone.
-          if (/body|frame|case|back|rail/i.test(cloneMaterial.name ?? '')) {
-            cloneMaterial.color = target;
-            cloneMaterial.metalness = 0.85;
-            cloneMaterial.roughness = 0.28;
+    modelRef.current.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (mat) {
+          const name = ((mesh.name || '') + ' ' + (mat.name || '')).toLowerCase();
+          const isExcluded = /screen|display|lens|glass|sensor|camera|logo|apple|flash/i.test(name);
+          if (!isExcluded && /body|frame|case|back|rail|housing|color|matte|metal|phone|cover/i.test(name)) {
+            mat.color.copy(targetColor);
+            mat.needsUpdate = true;
           }
-          return cloneMaterial;
-        });
-        child.castShadow = true;
+        }
       }
     });
+  }, [colorHex]);
 
-    return copy;
-  }, [scene, colorHex]);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-  // A slow idle rotation, suspended entirely when the OS asks for less motion.
-  useFrame((_, delta) => {
-    if (reducedMotion || !group.current) return;
-    group.current.rotation.y += delta * 0.12;
-  });
+    // 1. المشهد والكاميرا
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      35,
+      container.clientWidth / container.clientHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(0, 0, 4.8);
+
+    // 2. محرك الرسوميات (WebGL Renderer)
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    // 3. أدوات التحكم بالماوس واللمس
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.enablePan = false;
+    controls.minDistance = 3.2;
+    controls.maxDistance = 7;
+    controls.minPolarAngle = Math.PI / 4;
+    controls.maxPolarAngle = Math.PI / 1.7;
+
+    // 4. الإضاءة الاستوديو
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.2);
+    dirLight1.position.set(5, 8, 5);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0x9fc4e0, 1.0);
+    dirLight2.position.set(-5, 2, -3);
+    scene.add(dirLight2);
+
+    const pointLight = new THREE.PointLight(colorHex, 1.2, 10);
+    pointLight.position.set(0, -2, 3);
+    scene.add(pointLight);
+
+    // 5. تحميل المجسم وضبط مقاسه وسنترته تلقائياً
+    const loader = new GLTFLoader();
+    const actualPath = modelPath || '/models/phone.glb';
+    let currentModel: THREE.Group | null = null;
+
+    loader.load(
+      actualPath,
+      (gltf) => {
+        const model = gltf.scene;
+        currentModel = model;
+        modelRef.current = model;
+
+        // سنترة ومطابقة حجم المجسم على الشاشة بدقة
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 2.3 / (maxDim || 1);
+
+        model.scale.setScalar(scale);
+        model.position.x = -center.x * scale;
+        model.position.y = -center.y * scale;
+        model.position.z = -center.z * scale;
+
+        // تطبيق اللون الأولي
+        const targetColor = new THREE.Color(colorHex);
+        model.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            if (mat) {
+              const name = ((mesh.name || '') + ' ' + (mat.name || '')).toLowerCase();
+              const isExcluded = /screen|display|lens|glass|sensor|camera|logo|apple|flash/i.test(name);
+              if (!isExcluded && /body|frame|case|back|rail|housing|color|matte|metal|phone|cover/i.test(name)) {
+                mat.color.copy(targetColor);
+                mat.needsUpdate = true;
+              }
+            }
+          }
+        });
+
+        scene.add(model);
+        setLoading(false);
+      },
+      undefined,
+      (err) => {
+        console.error('Error loading 3D model:', err);
+        setLoading(false);
+      }
+    );
+
+    // 6. حلقة التدوير والرسم المستمر
+    let animationFrameId: number;
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+
+      if (currentModel && !reducedMotion) {
+        currentModel.rotation.y += 0.006; // دوران هادئ تلقائي
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    // 7. التجاوب مع أحجام الشاشات المختلفة
+    const handleResize = () => {
+      if (!container) return;
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // تنظيف الذاكرة
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameId);
+      renderer.dispose();
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+    };
+  }, [modelPath, reducedMotion]);
 
   return (
-    <group ref={group}>
-      <Center>
-        <primitive object={cloned} scale={1} />
-      </Center>
-    </group>
-  );
-}
-
-export default function ProductScene({ modelPath, colorHex, reducedMotion }: SceneProps) {
-  return (
-    <Canvas
-      // Capped so a high-DPR phone does not render four times the pixels it
-      // needs and drain the battery.
-      dpr={[1, 2]}
-      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-      // Only redraw when something actually changes: an idle viewer costs ~0 fps.
-      frameloop={reducedMotion ? 'demand' : 'always'}
-      shadows
-    >
-      <PerspectiveCamera makeDefault position={[0, 0, 5.4]} fov={32} />
-
-      {/* Studio lighting: a soft key, a cool rim and a warm fill in the brand
-          accent, which is what makes the product read as photographed rather
-          than rendered. */}
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[4, 6, 4]} intensity={1.6} castShadow />
-      <directionalLight position={[-5, 2, -3]} intensity={0.7} color="#9FC4E0" />
-      <pointLight position={[0, -2, 3]} intensity={0.5} color={colorHex} />
-
-      <Suspense fallback={null}>
-        <Model modelPath={modelPath} colorHex={colorHex} reducedMotion={reducedMotion} />
-        <Environment preset="studio" />
-      </Suspense>
-
-      <ContactShadows
-        position={[0, -2.1, 0]}
-        opacity={0.5}
-        scale={11}
-        blur={2.6}
-        far={4.2}
-      />
-
-      <OrbitControls
-        makeDefault
-        enablePan={false}
-        // Zoom is bounded: unbounded dolly lets a user end up inside the mesh
-        // with no idea how to get back out.
-        minDistance={3.6}
-        maxDistance={7.5}
-        // Keep the camera above the horizon; the underside of a phone model is
-        // rarely worth showing and often unfinished.
-        minPolarAngle={Math.PI / 5}
-        maxPolarAngle={Math.PI / 1.7}
-        enableDamping
-        dampingFactor={0.08}
-        rotateSpeed={0.6}
-        zoomSpeed={0.6}
-        autoRotate={false}
-        // Touch: one finger rotates, two fingers zoom — and the page still
-        // scrolls, because a viewer that traps vertical swipes strands mobile
-        // users mid-page.
-        touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
-      />
-    </Canvas>
+    <div className="relative h-full w-full min-h-[460px] cursor-grab active:cursor-grabbing">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-400">
+          جاري تحميل المجسم ثلاثي الأبعاد...
+        </div>
+      )}
+      <div ref={containerRef} className="h-full w-full min-h-[460px]" />
+    </div>
   );
 }

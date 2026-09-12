@@ -91,7 +91,7 @@ export default async function ReservationDetailPage({
               />
               <Row
                 label="طريقة الاستلام"
-                value={DELIVERY_METHOD[reservation.deliveryMethod].ar}
+                value={DELIVERY_METHOD[reservation.deliveryMethod]?.ar ?? reservation.deliveryMethod}
               />
               <Row
                 label={reservation.deliveryMethod === 'PICKUP' ? 'الفرع' : 'مدينة التوصيل'}
@@ -127,8 +127,8 @@ export default async function ReservationDetailPage({
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-ink-700">
                       {entry.fromStatus
-                        ? `${RESERVATION_STATUS[entry.fromStatus].ar} ← ${RESERVATION_STATUS[entry.toStatus].ar}`
-                        : RESERVATION_STATUS[entry.toStatus].ar}
+                        ? `${RESERVATION_STATUS[entry.fromStatus]?.ar ?? entry.fromStatus} ← ${RESERVATION_STATUS[entry.toStatus]?.ar ?? entry.toStatus}`
+                        : (RESERVATION_STATUS[entry.toStatus]?.ar ?? entry.toStatus ?? 'غير محدد')}
                     </p>
                     <p className="mt-0.5 text-xs text-ink-400">
                       {formatDateTime(entry.createdAt)}

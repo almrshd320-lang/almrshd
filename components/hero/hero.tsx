@@ -1,28 +1,48 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, useReducedMotion } from 'framer-motion';
+import Image from 'next/image';
+import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DeviceVisual } from '@/components/product/device-visual';
 import { Countdown } from './countdown';
 import { useSelectionStore } from '@/stores/selection-store';
 import { routes } from '@/config/site';
 import { motion as motionTokens } from '@/config/brand';
 import type { BookingWindow, PublicProduct } from '@/types/domain';
 
-/**
- * Hero.
- *
- * The one section allowed a cinematic entrance. Everything below it earns
- * attention through hierarchy and spacing rather than movement.
- */
-
 interface HeroProps {
   product: PublicProduct | null;
   bookingWindow: BookingWindow;
   maintenanceMessage: string;
 }
+
+// خريطة ربط الألوان بالصور
+const colorImageMap: Record<string, string> = {
+  // العنابي
+  burgundy: '/images/products/iphone-burgundy.png',
+  '#8e2434': '/images/products/iphone-burgundy.png',
+  '#6b1f2e': '/images/products/iphone-burgundy.png',
+
+  // السيلفر / الفضي
+  silver: '/images/products/iphone-silver.png',
+  white: '/images/products/iphone-silver.png',
+  '#e2e4e5': '/images/products/iphone-silver.png',
+
+  // الأسود / التيتانيوم
+  black: '/images/products/iphone-black.png',
+  titanium: '/images/products/iphone-black.png',
+  dark: '/images/products/iphone-black.png',
+  '#2b2b2e': '/images/products/iphone-black.png',
+
+  // الأزرق السماوي
+  blue: '/images/products/iphone-sky-blue.png',
+  'sky-blue': '/images/products/iphone-sky-blue.png',
+  skyblue: '/images/products/iphone-sky-blue.png',
+  cyan: '/images/products/iphone-sky-blue.png',
+  '#a7c7e7': '/images/products/iphone-sky-blue.png',
+  '#87ceeb': '/images/products/iphone-sky-blue.png',
+};
 
 export function Hero({ product, bookingWindow, maintenanceMessage }: HeroProps) {
   const reduceMotion = useReducedMotion();
@@ -41,13 +61,19 @@ export function Hero({ product, bookingWindow, maintenanceMessage }: HeroProps) 
           },
         };
 
+  // مطابقة اللون المختار مع خريطة الصور، أو العودة للصورة الافتراضية
+  const selectedKey = (selected?.id || selected?.name || selected?.hex || '').toLowerCase();
+  const activeImageSrc =
+    colorImageMap[selectedKey] ||
+    product?.heroImagePath ||
+    '/images/products/iphone-18-pro-max.png';
+
   return (
     <section
       id="hero"
       className="relative overflow-hidden pb-16 pt-8 sm:pb-24 sm:pt-12"
       aria-labelledby="hero-title"
     >
-      {/* Product lighting. Re-tints when a colour is selected. */}
       <div
         className="product-glow pointer-events-none absolute inset-x-0 top-0 h-[70vh]"
         aria-hidden="true"
@@ -115,14 +141,33 @@ export function Hero({ product, bookingWindow, maintenanceMessage }: HeroProps) 
           transition={{ duration: 1, ease: motionTokens.easeOut }}
           className="order-1 flex justify-center lg:order-2"
         >
-          <div className="w-52 sm:w-72 lg:w-full lg:max-w-sm">
-            <DeviceVisual
-              src={product?.heroImagePath ?? null}
-              alt={product?.nameAr ?? 'الجهاز'}
-              colorHex={selected?.hex ?? '#6B1F2E'}
-              priority
-              sizes="(max-width: 640px) 60vw, (max-width: 1024px) 40vw, 28vw"
+          <div className="relative mx-auto flex h-[480px] w-64 items-center justify-center sm:h-[540px] sm:w-80 lg:h-[600px] lg:w-full lg:max-w-md">
+            {/* إضاءة خلفية تتغير بنعومة مع لون الجهاز */}
+            <div
+              className="pointer-events-none absolute inset-0 -z-10 scale-90 rounded-full opacity-40 blur-3xl transition-colors duration-700"
+              style={{ backgroundColor: selected?.hex ?? '#6B1F2E' }}
+              aria-hidden="true"
             />
+
+            {/* صورة الجهاز تتبدل مع حركة تلاشي ناعمة */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeImageSrc}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="relative h-full w-full"
+              >
+                <Image
+                  src={activeImageSrc}
+                  alt={product?.nameAr ?? 'iPhone'}
+                  fill
+                  priority
+                  className="object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.85)]"
+                />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </motion.div>
       </div>

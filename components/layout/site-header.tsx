@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, X, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { landingSections, routes } from '@/config/site';
@@ -58,16 +59,13 @@ export function SiteHeader({
             : 'border-b border-transparent bg-transparent',
         )}
       >
-        <div className="shell flex h-16 items-center justify-between gap-4">
+        <div className="shell flex h-20 items-center justify-between gap-4 sm:h-24">
           <Link
             href={routes.home}
-            className="flex items-center gap-2.5"
+            className="flex items-center"
             aria-label={`${storeName} — الصفحة الرئيسية`}
           >
             <Wordmark />
-            <span className="text-base font-semibold tracking-tight text-ink-50">
-              {storeName}
-            </span>
           </Link>
 
           <nav aria-label="التنقل الرئيسي" className="hidden lg:block">
@@ -123,8 +121,10 @@ export function SiteHeader({
         aria-modal="true"
         aria-label="القائمة"
       >
-        <div className="flex h-16 items-center justify-between px-5">
-          <span className="text-base font-semibold text-ink-50">{storeName}</span>
+        <div className="flex h-20 items-center justify-between px-5 sm:h-24">
+          <div className="flex items-center">
+            <Wordmark />
+          </div>
           <button
             type="button"
             onClick={() => setMenuOpen(false)}
@@ -173,32 +173,19 @@ export function SiteHeader({
 }
 
 /**
- * Al-Murshid mark — an original geometric compass rose (المرشد = "the guide").
- * Deliberately nothing like any existing technology brand's identity.
+ * شعار شركة المرشد
  */
 function Wordmark() {
   return (
-    <svg
-      viewBox="0 0 32 32"
-      className="size-8"
-      role="img"
-      aria-label="شعار المرشد"
-      fill="none"
-    >
-      <circle cx="16" cy="16" r="14.5" stroke="url(#am-ring)" strokeWidth="1.25" />
-      <path d="M16 5.5 19 16l-3 10.5L13 16Z" fill="url(#am-needle)" />
-      <path d="M5.5 16 16 13l10.5 3L16 19Z" fill="currentColor" opacity="0.28" />
-      <circle cx="16" cy="16" r="1.75" fill="#fff" />
-      <defs>
-        <linearGradient id="am-ring" x1="16" y1="1" x2="16" y2="31">
-          <stop stopColor="#C9CCD1" stopOpacity="0.9" />
-          <stop offset="1" stopColor="#C9CCD1" stopOpacity="0.25" />
-        </linearGradient>
-        <linearGradient id="am-needle" x1="16" y1="5.5" x2="16" y2="26.5">
-          <stop stopColor="#B85C74" />
-          <stop offset="1" stopColor="#6B1F2E" />
-        </linearGradient>
-      </defs>
-    </svg>
+    <div className="relative flex items-center justify-center overflow-visible">
+      <Image
+        src="/images/logo.png"
+        alt="شعار شركة المرشد"
+        width={260}
+        height={260}
+        priority
+        className="h-20 w-auto object-contain scale-[1.9] sm:h-24 sm:scale-[2.1] origin-center drop-shadow-md"
+      />
+    </div>
   );
 }

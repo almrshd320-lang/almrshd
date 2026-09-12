@@ -2,17 +2,8 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-
-/**
- * The product visual.
- *
- * Al-Murshid has not supplied product photography yet, and the platform must
- * not ship broken image icons while it waits. So: try the configured image, and
- * on error fall back to an original abstract device rendering that takes the
- * selected colour. The page is complete either way, and dropping a real photo
- * into /public/images/products/ upgrades it with no code change.
- */
 
 interface DeviceVisualProps {
   src: string | null;
@@ -23,35 +14,95 @@ interface DeviceVisualProps {
   sizes?: string;
 }
 
+// دالة لتحديد مسار الصورة المطابقة بدقة حسب الاسم أو كود الـ Hex
+function getProductImageByColor(colorHex: string, alt: string, fallbackSrc: string | null): string {
+  const text = `${alt} ${colorHex}`.toLowerCase();
+
+  // 1. المطابقة عبر الأسماء المعتمدة في الموقع
+  if (text.includes('سيلفر') || text.includes('فضي') || text.includes('silver') || text.includes('white') || text.includes('أبيض')) {
+    return '/images/products/iphone-silver.png';
+  }
+  if (text.includes('اسود') || text.includes('أسود') || text.includes('ملكي') || text.includes('black') || text.includes('dark')) {
+    return '/images/products/iphone-black.png';
+  }
+  if (text.includes('سماوي') || text.includes('سمائي') || text.includes('ازرق') || text.includes('أزرق') || text.includes('blue') || text.includes('cyan')) {
+    return '/images/products/iphone-sky-blue.png';
+  }
+  if (text.includes('عنابي') || text.includes('احمر') || text.includes('أحمر') || text.includes('burgundy') || text.includes('red')) {
+    return '/images/products/iphone-burgundy.png';
+  }
+
+  // 2. تحليل كود الـ Hex حسابياً لضمان الدقة في كل الحالات
+  const cleanHex = colorHex.replace('#', '').trim();
+  if (cleanHex.length >= 6) {
+    const r = parseInt(cleanHex.substring(0, 2), 16);
+    const g = parseInt(cleanHex.substring(2, 4), 16);
+    const b = parseInt(cleanHex.substring(4, 6), 16);
+
+    // الأسود الملكي
+    if (r < 75 && g < 75 && b < 75) {
+      return '/images/products/iphone-black.png';
+    }
+    // السيلفر
+    if (r > 170 && g > 170 && b > 170 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) {
+      return '/images/products/iphone-silver.png';
+    }
+    // الأزرق السمائي
+    if (b > r + 15 && b > 110) {
+      return '/images/products/iphone-sky-blue.png';
+    }
+    // العنابي
+    if (r > g + 20 && r > b + 15) {
+      return '/images/products/iphone-burgundy.png';
+    }
+  }
+
+  return fallbackSrc || '/images/products/iphone-burgundy.png';
+}
+
 export function DeviceVisual({
-  src, alt, colorHex, priority = false, className, sizes = '(max-width: 768px) 80vw, 40vw',
+  src,
+  alt,
+  colorHex,
+  priority = false,
+  className,
+  sizes = '(max-width: 768px) 80vw, 40vw',
 }: DeviceVisualProps) {
   const [failed, setFailed] = useState(false);
 
-  if (!src || failed) {
+  // اختيار مسار الصورة المناسب للون المختار
+  const activeSrc = getProductImageByColor(colorHex, alt, src);
+
+  if (failed) {
     return <DevicePlaceholder colorHex={colorHex} label={alt} className={className} />;
   }
 
   return (
     <div className={cn('relative aspect-[9/19] w-full max-w-full', className)}>
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        priority={priority}
-        sizes={sizes}
-        onError={() => setFailed(true)}
-        className="object-contain drop-shadow-product"
-      />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeSrc}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.96 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="relative h-full w-full"
+        >
+          <Image
+            src={activeSrc}
+            alt={alt}
+            fill
+            priority={priority}
+            sizes={sizes}
+            onError={() => setFailed(true)}
+            className="object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.85)]"
+          />
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
 
-/**
- * Original abstract device rendering — a rounded slab with a screen well, a
- * camera plateau and a specular highlight. Drawn from scratch so it evokes a
- * premium phone without reproducing any real product's design.
- */
 export function DevicePlaceholder({
   colorHex,
   label,
@@ -93,27 +144,33 @@ export function DevicePlaceholder({
           </linearGradient>
         </defs>
 
-        {/* Body */}
         <rect x="6" y="6" width="168" height="368" rx="34" fill={`url(#body-${id})`} />
-        {/* Metallic rail */}
         <rect
-          x="6" y="6" width="168" height="368" rx="34"
-          fill="none" stroke={`url(#rail-${id})`} strokeWidth="2.5"
+          x="6"
+          y="6"
+          width="168"
+          height="368"
+          rx="34"
+          fill="none"
+          stroke={`url(#rail-${id})`}
+          strokeWidth="2.5"
         />
-        {/* Screen well */}
         <rect x="14" y="14" width="152" height="352" rx="28" fill={`url(#screen-${id})`} />
-        {/* Specular sweep */}
         <rect x="14" y="14" width="152" height="352" rx="28" fill={`url(#spec-${id})`} />
-        {/* Camera plateau */}
         <rect
-          x="26" y="26" width="62" height="62" rx="20"
-          fill="#0E0F11" stroke="#ffffff" strokeOpacity="0.1"
+          x="26"
+          y="26"
+          width="62"
+          height="62"
+          rx="20"
+          fill="#0E0F11"
+          stroke="#ffffff"
+          strokeOpacity="0.1"
         />
         <circle cx="46" cy="46" r="11" fill="#141518" stroke="#ffffff" strokeOpacity="0.14" />
         <circle cx="70" cy="46" r="11" fill="#141518" stroke="#ffffff" strokeOpacity="0.14" />
         <circle cx="46" cy="70" r="11" fill="#141518" stroke="#ffffff" strokeOpacity="0.14" />
         <circle cx="46" cy="46" r="4" fill={colorHex} fillOpacity="0.55" />
-        {/* Sensor cutout */}
         <rect x="72" y="24" width="36" height="10" rx="5" fill="#000" fillOpacity="0.7" />
       </svg>
     </div>
