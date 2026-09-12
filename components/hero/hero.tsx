@@ -17,28 +17,44 @@ interface HeroProps {
   maintenanceMessage: string;
 }
 
-// خريطة ربط الألوان بالصور
+// خريطة ربط الألوان بالصور (عربي + إنجليزي + Hex)
 const colorImageMap: Record<string, string> = {
   // العنابي
   burgundy: '/images/products/iphone-burgundy.png',
+  عنابي: '/images/products/iphone-burgundy.png',
+  احمر: '/images/products/iphone-burgundy.png',
+  أحمر: '/images/products/iphone-burgundy.png',
+  red: '/images/products/iphone-burgundy.png',
   '#8e2434': '/images/products/iphone-burgundy.png',
   '#6b1f2e': '/images/products/iphone-burgundy.png',
 
   // السيلفر / الفضي
   silver: '/images/products/iphone-silver.png',
+  فضي: '/images/products/iphone-silver.png',
+  سيلفر: '/images/products/iphone-silver.png',
+  ابيض: '/images/products/iphone-silver.png',
+  أبيض: '/images/products/iphone-silver.png',
   white: '/images/products/iphone-silver.png',
   '#e2e4e5': '/images/products/iphone-silver.png',
+  '#f5f5f7': '/images/products/iphone-silver.png',
 
   // الأسود / التيتانيوم
   black: '/images/products/iphone-black.png',
+  اسود: '/images/products/iphone-black.png',
+  أسود: '/images/products/iphone-black.png',
   titanium: '/images/products/iphone-black.png',
+  تيتانيوم: '/images/products/iphone-black.png',
   dark: '/images/products/iphone-black.png',
   '#2b2b2e': '/images/products/iphone-black.png',
+  '#1c1c1e': '/images/products/iphone-black.png',
 
   // الأزرق السماوي
   blue: '/images/products/iphone-sky-blue.png',
   'sky-blue': '/images/products/iphone-sky-blue.png',
   skyblue: '/images/products/iphone-sky-blue.png',
+  سماوي: '/images/products/iphone-sky-blue.png',
+  ازرق: '/images/products/iphone-sky-blue.png',
+  أزرق: '/images/products/iphone-sky-blue.png',
   cyan: '/images/products/iphone-sky-blue.png',
   '#a7c7e7': '/images/products/iphone-sky-blue.png',
   '#87ceeb': '/images/products/iphone-sky-blue.png',
@@ -46,7 +62,7 @@ const colorImageMap: Record<string, string> = {
 
 export function Hero({ product, bookingWindow, maintenanceMessage }: HeroProps) {
   const reduceMotion = useReducedMotion();
-  const selected = useSelectionStore((s) => s.selected());
+  const selectedKey = (selected?.id || (selected as any)?.name || selected?.hex || '').toLowerCase();
 
   const rise = (delay: number) =>
     reduceMotion
@@ -61,10 +77,34 @@ export function Hero({ product, bookingWindow, maintenanceMessage }: HeroProps) 
           },
         };
 
-  // مطابقة اللون المختار مع خريطة الصور، أو العودة للصورة الافتراضية
-  const selectedKey = (selected?.id || selected?.name || selected?.hex || '').toLowerCase();
+  // دالة ذكية للبحث عن مسار الصورة من أي خاصية في كائن اللون المختار
+  const getActiveImage = () => {
+    if (!selected) return null;
+
+    const valuesToMatch = [
+      selected.id,
+      selected.name,
+      (selected as Record<string, unknown>).nameAr as string,
+      (selected as Record<string, unknown>).slug as string,
+      selected.hex,
+    ]
+      .filter(Boolean)
+      .map((val) => String(val).toLowerCase().trim());
+
+    for (const val of valuesToMatch) {
+      if (colorImageMap[val]) return colorImageMap[val];
+
+      for (const [key, path] of Object.entries(colorImageMap)) {
+        if (val.includes(key) || key.includes(val)) {
+          return path;
+        }
+      }
+    }
+    return null;
+  };
+
   const activeImageSrc =
-    colorImageMap[selectedKey] ||
+    getActiveImage() ||
     product?.heroImagePath ||
     '/images/products/iphone-18-pro-max.png';
 
